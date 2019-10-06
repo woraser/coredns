@@ -7,11 +7,11 @@
 ## Description
 
 The *traffic* plugin is an advanced load balancer that allows traffic steering, weighted responses
-and draining of endpoints. It receives (via gRPC) *assignments* that define the relative
-importance of the endpoints. The plugin takes care of handing out responses that adhere to
-this assignment. Assignments will need to be updated frequently to ensure load spreading, without
-new updates *traffic* will hand out responses according to the last received assignment. When there
-are no assignments for a name (yet), the responses will be let through as-is.
+and draining of endpoints. It receives (via gRPC) *assignments* that define the relative importance
+of the endpoints. The plugin takes care of handing out responses that adhere to this assignment.
+Assignments will need to be updated frequently to ensure load spreading, without new updates
+*traffic* will hand out responses according to the last received assignment. When there are no
+assignments for a name (yet), the responses will be let through as-is.
 
 An assignment covers a "service name", which for all intent and purposes is just a domain name. With
 each service name a number of backends are expected. A backend is defined as a IP:port pair and a
@@ -31,7 +31,7 @@ acts upon assignments*.
 traffic
 ~~~
 
-This enables traffic loadbalancing for all subdomains of the server block.
+This enables traffic loadbalancing for all (sub-)domains named in the server block.
 
 ## Examples
 
@@ -41,6 +41,7 @@ example.org {
     forward . 10.12.13.14
 }
 ~~~
+
 This will add load balancing for domains under example.org; the upstream information comes from
 10.12.13.14; depending on received assignments replies will be let through as-is or balanced.
 
@@ -48,26 +49,28 @@ This will add load balancing for domains under example.org; the upstream informa
 
 Assignments are given in protobuf format, but here is an example in YAML conveying the same
 information. This is an example assignment for the service "www.example.org":
+
 ~~~
 assignments:
   assigment:
     - service: www.example.org
         - backend: 192.168.1.1:443
-            use: 1
+            assign: 1
           backend: 192.168.1.2:443
-            use: 3
+            assign: 3
           backend: 192.168.1.3:443
-            use: -1
+            assign: -1
 ~~~
-This particular one has 3 backends, one of which is to be drained (192.168.1.3), the remaining to
+
+This particular one has 3 backends, one of which is to be drained (192.168.1.3), the remaining two
 tell *traffic* that 192.168.1.2 should be handed out 3 times more often than 192.168.1.1.
 
-When *traffic* sees a reply for a service it is authoritative for the one of the following will
-occur depending on the query.
+When *traffic* sees a reply for a service it is authoritative for, one of the following will occur
+depending on the query:
 
-For an A query it will check all A records in the answer section with the backends for this
-service. Any non-matching addresses *will be removed from the reply*. The remaining matching
-addresses will be ordered according to the assignment.
+For an A query it will check all A records in the answer section with the backends for this service.
+Any non-matching addresses *will be removed from the reply*. The remaining matching addresses will
+be ordered according to the assignment. Backend with a negative assignment will be deleted as well.
 
 For an AAAA query the same things happens as with an A query except we look for AAAA records.
 
@@ -76,7 +79,13 @@ contains address records. If there are no address to be found the query it let t
 there are addresses to be found they are matched against any received assignments and only the SRV
 records and address records that match an assignment are let through.
 
+When all assignments are removed from a reply, and we're left with an empty response, *traffic*
+will return a NODATA response. It will *never* sent an NXDOMAIN in this case. The SOA record will be
+synthesised at this point and will have a low TTL of 5 seconds.
+
+Any RRSIG are *stripped* from message where *traffic* is authoritative for.
+
 ## Bugs
 
-This plugin doesn't work with DNSSEC. Queries for, or replies with CNAMEs and DNAME need some more
-thought.
+Queries for, or replies with CNAMEs and DNAME need some more thought. And should SRV replies be
+touched by *traffic* at all?
