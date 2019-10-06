@@ -15,8 +15,8 @@ assignments for a name (yet), the responses will be let through as-is.
 
 An assignment covers a "service name", which for all intent and purposes is just a domain name. With
 each service name a number of backends are expected. A backend is defined as a IP:port pair and a
-number telling how often this backend should be be handed out, relative to the other backends. A
-negative number means the backend exists, but should not be handed out (drain it).
+fraction telling how often this backend should be be handed out. A zero means the backend exists,
+but should not be handed out (drain it).
 
 The *traffic* plugin will only balance for A, AAAA and SRV requests (see Assignments below). Also
 note *traffic* works with any plugin that returns responses; i.e. *traffic* doesn't mandate a
@@ -55,15 +55,16 @@ assignments:
   assigment:
     - service: www.example.org
         - backend: 192.168.1.1:443
-            assign: 1
+            assign: 0.33
           backend: 192.168.1.2:443
-            assign: 3
+            assign: 1.00
           backend: 192.168.1.3:443
-            assign: -1
+            assign: 0.00
 ~~~
 
 This particular one has 3 backends, one of which is to be drained (192.168.1.3), the remaining two
-tell *traffic* that 192.168.1.2 should be handed out 3 times more often than 192.168.1.1.
+tell *traffic* that 192.168.1.2 should be handed out in *all* responses, and 192.168.1.1 only in
+(roughly) one third of the responses.
 
 When *traffic* sees a reply for a service it is authoritative for, one of the following will occur
 depending on the query:
@@ -87,5 +88,12 @@ Any RRSIG are *stripped* from message where *traffic* is authoritative for.
 
 ## Bugs
 
+This plugin does not work well with DNSSEC.
+
+## TODO
+
 Queries for, or replies with CNAMEs and DNAME need some more thought. And should SRV replies be
 touched by *traffic* at all?
+Add source address information (geographical load balancing) to the assignment. This can be handled
+be having each IP:port pair specificy an optional source range there this record should be used. For
+IPv4 this must a /24 for IPv6 a /64.
