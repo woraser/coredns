@@ -28,19 +28,22 @@ the type:
 
 IP:port pairs:
 
-:   This will load balance queries for A or AAAA records.
+:   This will load balance queries for A or AAAA records. This will result in handing out exactly
+    one address for a request.
 
 Domain names:
 
-:   This will load balance queries for SRV and MX records.
+:   This will load balance queries for SRV and MX records. All original records will be retained,
+    and *traffic* will change the priorities and weights on each of them to give the client, the
+    current preferred backend.
 
 The actual load-balancing algorithm is straight forward and mostly involves matching up resource
 records, but see Assignments below for more details. The *traffic* plugin has no notion of draining,
 drop overload and anything that advanced, *it just acts upon assignments*.
 
-Note the this plugin works with any plugin that returns responses; i.e. *traffic* doesn't mandate a
-backend storage; it can work with *file*, or *kubernetes*, etc. . You can just overlay this on top
-of those and have way to steer traffic around.
+This plugin works with any plugin that returns responses; i.e. *traffic* doesn't mandate a backend
+storage; it can work with *file*, or *kubernetes*, etc. . You can just overlay this on top of those
+and have way to steer traffic around.
 
 ## Syntax
 
@@ -87,20 +90,17 @@ tell *traffic* that 192.168.1.2 should be handed out in *all* responses, and 192
 When *traffic* sees a reply for a service it is authoritative for, the following will occur. On
 seeing a reply the for a known service name the answer section will be matched to the backends.
 For A and AAAA queries this means matching on the owner name, for SRV and MX this will match on
-the target name (and port). Any unknown backends will be removed from the set as will be backends
-that are assigned zero load. Next, one record will be selected as the one to be handed out for this
-query; this will be the *only remaining* record in the reply; all other records are stripped from
-it.
+the target name (and port). And backend with *zero* assignment are removed from the set. Then the
+algorithm described above will kick in. For A and AAAA it will return one record, for SRV and MX
+will tweak the priority and weights; and sort the choosen backend at the top.
 
 If all assignments are removed from a reply, and we're left with an empty response, *traffic* will
 return a NODATA response. It will *never* sent an NXDOMAIN. The SOA record will be synthesised, and
 has a low TTL (and negative TTL) of 5 seconds.
 
-Any RRSIG are *stripped* from messages where *traffic* is authoritative for.
-
 ## Bugs
 
-This plugin does not work well with DNSSEC.
+This plugin does not work with DNSSEC.
 
 ## TODO
 
@@ -108,3 +108,6 @@ Queries for, or replies with CNAMEs and DNAME need some more thought. Add source
 (geographical load balancing) to the assignment? This can be handled be having each backend
 specificy an optional source range there this record should be used. For IPv4 this must a /24 for
 IPv6 a /64.
+
+It not having a backend layer a boon, or a drag; we can be more flexible with that. And in the
+current design we still need to get the DNS information from *somewhere*.
