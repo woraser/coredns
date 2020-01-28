@@ -9,6 +9,7 @@ package dnsserver
 // feel the effects of all other plugin below
 // (after) them during a request, but they must not
 // care what plugin above them are doing.
+// 插件列表 有序！自下而上
 var Directives = []string{
 	"metadata",
 	"cancel",

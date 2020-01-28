@@ -16,19 +16,21 @@ import (
 )
 
 func init() {
+	// 初始化 基本参数
 	caddy.DefaultConfigFile = "Corefile"
 	caddy.Quiet = true // don't show init stuff from caddy
 	setVersion()
-
+	// 配置项
 	flag.StringVar(&conf, "conf", "", "Corefile to load (default \""+caddy.DefaultConfigFile+"\")")
 	flag.BoolVar(&plugins, "plugins", false, "List installed plugins")
 	flag.StringVar(&caddy.PidFile, "pidfile", "", "Path to write pid file")
 	flag.BoolVar(&version, "version", false, "Show version")
 	flag.BoolVar(&dnsserver.Quiet, "quiet", false, "Quiet mode (no initialization output)")
-
+	// 加载配置文件加载方法
 	caddy.RegisterCaddyfileLoader("flag", caddy.LoaderFunc(confLoader))
+	// 默认的配置文件加载方法
 	caddy.SetDefaultCaddyfileLoader("default", caddy.LoaderFunc(defaultLoader))
-
+	// app 基本参数
 	caddy.AppName = coreName
 	caddy.AppVersion = CoreVersion
 }
@@ -39,6 +41,7 @@ func Run() {
 
 	// Reset flag.CommandLine to get rid of unwanted flags for instance from glog (used in kubernetes).
 	// And read the ones we want to keep.
+	// 重置flag 梳理需要存储的flag
 	flag.VisitAll(func(f *flag.Flag) {
 		if _, ok := flagsBlacklist[f.Name]; ok {
 			return
@@ -52,30 +55,33 @@ func Run() {
 	}
 
 	flag.Parse()
-
+	// 若存在空flag 直接报错
 	if len(flag.Args()) > 0 {
 		mustLogFatal(fmt.Errorf("extra command line arguments: %s", flag.Args()))
 	}
 
 	log.SetOutput(os.Stdout)
 	log.SetFlags(0) // Set to 0 because we're doing our own time, with timezone
-
+	// 展示当前版本
 	if version {
 		showVersion()
 		os.Exit(0)
 	}
+	// 展示所注册插件
 	if plugins {
 		fmt.Println(caddy.DescribePlugins())
 		os.Exit(0)
 	}
 
 	// Get Corefile input
+	// 加载配置文件
 	corefile, err := caddy.LoadCaddyfile(serverType)
 	if err != nil {
 		mustLogFatal(err)
 	}
 
 	// Start your engines
+	// 启动caddy服务
 	instance, err := caddy.Start(corefile)
 	if err != nil {
 		mustLogFatal(err)
@@ -86,6 +92,7 @@ func Run() {
 	}
 
 	// Twiddle your thumbs
+	// wait request
 	instance.Wait()
 }
 
@@ -103,6 +110,7 @@ func mustLogFatal(args ...interface{}) {
 }
 
 // confLoader loads the Caddyfile using the -conf flag.
+// 配置文件加载器
 func confLoader(serverType string) (caddy.Input, error) {
 	if conf == "" {
 		return nil, nil
@@ -200,6 +208,7 @@ var (
 )
 
 // flagsBlacklist removes flags with these names from our flagset.
+// flag 黑名单
 var flagsBlacklist = map[string]struct{}{
 	"logtostderr":      {},
 	"alsologtostderr":  {},

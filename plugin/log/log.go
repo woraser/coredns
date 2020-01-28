@@ -59,12 +59,13 @@ func (l Logger) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) 
 func (l Logger) Name() string { return "log" }
 
 // Rule configures the logging plugin.
+// log插件的配置项
 type Rule struct {
 	NameScope string
 	Class     map[response.Class]struct{}
 	Format    string
 }
-
+// 默认配置
 const (
 	// CommonLogFormat is the common log format.
 	CommonLogFormat = `{remote}:{port} ` + replacer.EmptyValue + ` {>id} "{type} {class} {name} {proto} {size} {>do} {>bufsize}" {rcode} {>rflags} {rsize} {duration}`

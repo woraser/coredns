@@ -26,14 +26,14 @@ func setup(c *caddy.Controller) error {
 
 	return nil
 }
-
+// 日志解析
 func logParse(c *caddy.Controller) ([]Rule, error) {
 	var rules []Rule
 
 	for c.Next() {
 		args := c.RemainingArgs()
 		length := len(rules)
-
+		// 剩余的参数
 		switch len(args) {
 		case 0:
 			// Nothing specified; use defaults
